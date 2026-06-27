@@ -20,6 +20,67 @@ async function runTests() {
       console.log(`       - Preset ${idx + 1}: "${p.preset_name}" (${p.incident_type})`);
     });
 
+    // 1b. Verify user authentication database operations
+    console.log('\nTesting Authentication Database Operations...');
+    const testUserId = 'test-usr-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+    const testUsername = 'testuser_' + Math.random().toString(36).substr(2, 5);
+    const testPassword = 'testpassword123';
+    const testFullName = 'Test Full Name';
+    const testUserRole = 'Test Engineer';
+
+    // Verify hashing helpers
+    const salt = db.generateSalt();
+    const hash = db.hashPassword(testPassword, salt);
+    if (!salt || !hash || hash.length !== 128) {
+      throw new Error('Password hashing verification failed.');
+    }
+    console.log('[PASS] Password hashing functions validated successfully.');
+
+    // Verify user insertion
+    await db.run(`
+      INSERT INTO users (id, username, password_hash, salt, full_name, role)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [testUserId, testUsername, hash, salt, testFullName, testUserRole]);
+    console.log(`[PASS] Successfully inserted test user (ID: ${testUserId}, Username: ${testUsername}).`);
+
+    // Verify user retrieval and password verification
+    const fetchedUser = await db.get('SELECT * FROM users WHERE username = ?', [testUsername]);
+    if (!fetchedUser) {
+      throw new Error('Test user could not be retrieved from DB.');
+    }
+    const computedHash = db.hashPassword(testPassword, fetchedUser.salt);
+    if (computedHash !== fetchedUser.password_hash) {
+      throw new Error('Retrieved user password hash validation failed.');
+    }
+    console.log('[PASS] Successfully retrieved user and validated password hash.');
+
+    // Verify session creation
+    const testToken = 'test-tok-' + Math.random().toString(36).substr(2, 10).toUpperCase();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+    await db.run(`
+      INSERT INTO sessions (token, user_id, expires_at)
+      VALUES (?, ?, ?)
+    `, [testToken, testUserId, expiresAt.toISOString()]);
+    console.log('[PASS] Successfully created session token for test user.');
+
+    // Verify session retrieval and user join
+    const sessionWithUser = await db.get(`
+      SELECT s.token, u.username, u.full_name
+      FROM sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.token = ?
+    `, [testToken]);
+    if (!sessionWithUser || sessionWithUser.username !== testUsername) {
+      throw new Error('Failed to retrieve session and join corresponding user.');
+    }
+    console.log(`[PASS] Session retrieval and user relationship check passed for username: ${sessionWithUser.username}.`);
+
+    // Clean up test user & session
+    await db.run('DELETE FROM sessions WHERE token = ?', [testToken]);
+    await db.run('DELETE FROM users WHERE id = ?', [testUserId]);
+    console.log('[PASS] Test user and session cleanup completed successfully.');
+
     // 2. Verify we can insert an incident report
     const testId = 'test-rep-' + Math.random().toString(36).substr(2, 5).toUpperCase();
     const testReport = {

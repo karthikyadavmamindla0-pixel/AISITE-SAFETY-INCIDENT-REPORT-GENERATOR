@@ -45,6 +45,16 @@
       </button>
     </nav>
     <div class="header-actions">
+      <div class="user-profile-chip hidden" id="user-profile-chip">
+        <i class="fa-solid fa-circle-user"></i>
+        <div class="user-info-text">
+          <span class="user-name" id="header-user-name"></span>
+          <span class="user-role" id="header-user-role"></span>
+        </div>
+      </div>
+      <button class="logout-btn hidden" id="logout-btn" title="Log Out">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
       <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
         <i class="fa-solid fa-moon"></i>
       </button>
@@ -464,6 +474,139 @@
           <div class="report-markdown-body" id="modal-report-body"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Login Overlay (Full Screen) -->
+  <div class="login-overlay hidden" id="login-overlay">
+    <div class="login-container">
+      
+      <!-- Left side: Branding & Marketing -->
+      <div class="login-brand-panel">
+        <div class="brand-panel-content">
+          <div class="brand-logo">
+            <i class="fa-solid fa-helmet-safety"></i>
+            <span>CROWNRIDGE LLP</span>
+          </div>
+          <h2>AI Safety Report Desk</h2>
+          <p>Secure regulatory-grade incident reporting and compliance logs management platform.</p>
+          
+          <div class="compliance-bullets">
+            <div class="bullet-item">
+              <i class="fa-solid fa-shield-halved text-amber"></i>
+              <span>BOCW Act Section 40 compliant report generation.</span>
+            </div>
+            <div class="bullet-item">
+              <i class="fa-solid fa-file-shield text-amber"></i>
+              <span>Indian Standards (IS 4912, IS 3764) safety integration.</span>
+            </div>
+            <div class="bullet-item">
+              <i class="fa-solid fa-chart-line text-amber"></i>
+              <span>Real-time safety risk trends & quality scoring dashboards.</span>
+            </div>
+          </div>
+          
+          <div class="brand-footer">
+            <span class="security-badge"><i class="fa-solid fa-lock"></i> AES-256 Secure Session</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right side: Authentication Forms -->
+      <div class="login-form-panel">
+        
+        <!-- Toggle Tabs -->
+        <div class="auth-tabs">
+          <button class="auth-tab-btn active" id="tab-login-btn">Log In</button>
+          <button class="auth-tab-btn" id="tab-register-btn-ui">Register</button>
+        </div>
+        
+        <!-- LOGIN FORM -->
+        <form id="auth-login-form" class="auth-form">
+          <div class="form-intro">
+            <h3>Welcome Back</h3>
+            <p>Please authorize using your site supervisor credentials.</p>
+          </div>
+          
+          <div class="auth-error hidden" id="login-error-msg"></div>
+          
+          <div class="form-group">
+            <label for="login-username">Username</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-user input-icon"></i>
+              <input type="text" id="login-username" name="username" placeholder="e.g. ramesh" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-key input-icon"></i>
+              <input type="password" id="login-password" name="password" placeholder="••••••••" required>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn btn-primary btn-full-width" id="btn-login-submit">
+            <span class="btn-text">Log In & Authorize <i class="fa-solid fa-arrow-right"></i></span>
+          </button>
+          
+          <p class="auth-switch-prompt">
+            Don't have a supervisor account? <a href="#" id="switch-to-register">Register here</a>
+          </p>
+        </form>
+        
+        <!-- REGISTER FORM -->
+        <form id="auth-register-form" class="auth-form hidden">
+          <div class="form-intro">
+            <h3>Create Account</h3>
+            <p>Register as a site supervisor for Crownridge safety reporting.</p>
+          </div>
+          
+          <div class="auth-error hidden" id="register-error-msg"></div>
+          
+          <div class="form-group">
+            <label for="register-username">Username</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-user input-icon"></i>
+              <input type="text" id="register-username" name="username" placeholder="e.g. janesmith" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="register-fullname">Supervisor Full Name</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-user-tie input-icon"></i>
+              <input type="text" id="register-fullname" name="full_name" placeholder="e.g. Jane Smith" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="register-role">Designation / Role</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-shield-halved input-icon"></i>
+              <input type="text" id="register-role" name="role" placeholder="e.g. Senior Safety Officer" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="register-password">Password</label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-key input-icon"></i>
+              <input type="password" id="register-password" name="password" placeholder="Min 6 characters" required>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn btn-primary btn-full-width" id="btn-register-submit">
+            <span class="btn-text">Register & Log In <i class="fa-solid fa-user-plus"></i></span>
+          </button>
+          
+          <p class="auth-switch-prompt">
+            Already have an account? <a href="#" id="switch-to-login">Log in here</a>
+          </p>
+        </form>
+        
+      </div>
+      
     </div>
   </div>
 

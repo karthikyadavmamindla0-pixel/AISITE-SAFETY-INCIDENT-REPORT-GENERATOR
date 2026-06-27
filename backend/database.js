@@ -1,5 +1,6 @@
 const path = require('path');
 const dotenv = require('dotenv');
+const crypto = require('crypto');
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +35,32 @@ if (useTurso) {
     });
   });
 }
+
+// --- PASSWORD HASHING HELPERS ---
+function hashPassword(password, salt) {
+  return crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+}
+
+function generateSalt() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+const defaultUsers = [
+  {
+    id: 'usr-ramesh',
+    username: 'ramesh',
+    password: 'password123',
+    full_name: 'Ramesh Kumar',
+    role: 'Senior Safety Officer'
+  },
+  {
+    id: 'usr-admin',
+    username: 'admin',
+    password: 'password123',
+    full_name: 'Admin Director',
+    role: 'Safety Director'
+  }
+];
 
 // --- SQLITE INITIALIZATION ---
 function initializeSqliteDatabase() {
@@ -86,7 +113,36 @@ function initializeSqliteDatabase() {
         )
       `, (err) => {
         if (err) return reject(err);
-        seedTemplatesSqlite(resolve, reject);
+      });
+
+      dbInstance.run(`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          salt TEXT NOT NULL,
+          full_name TEXT NOT NULL,
+          role TEXT NOT NULL,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      `, (err) => {
+        if (err) return reject(err);
+      });
+
+      dbInstance.run(`
+        CREATE TABLE IF NOT EXISTS sessions (
+          token TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          expires_at TEXT NOT NULL,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `, (err) => {
+        if (err) return reject(err);
+        
+        seedTemplatesSqlite(() => {
+          seedUsersSqlite(resolve, reject);
+        }, reject);
       });
     });
   });
@@ -137,7 +193,29 @@ async function initializeTursoDatabase() {
       )
     `);
 
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        salt TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        role TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        token TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     await seedTemplatesTurso();
+    await seedUsersTurso();
     console.log('Turso tables initialized and seeded successfully.');
   } catch (err) {
     console.error('Error initializing Turso tables:', err.message);
@@ -193,6 +271,26 @@ function seedTemplatesSqlite(resolve, reject) {
   }
 }
 
+function seedUsersSqlite(resolve, reject) {
+  try {
+    const stmt = dbInstance.prepare(`
+      INSERT OR IGNORE INTO users (id, username, password_hash, salt, full_name, role)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    defaultUsers.forEach((u) => {
+      const salt = generateSalt();
+      const hash = hashPassword(u.password, salt);
+      stmt.run(u.id, u.username, hash, salt, u.full_name, u.role);
+    });
+    stmt.finalize((err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  } catch (err) {
+    reject(err);
+  }
+}
+
 async function seedTemplatesTurso() {
   try {
     for (const p of presets) {
@@ -204,6 +302,28 @@ async function seedTemplatesTurso() {
     }
   } catch (err) {
     console.error('Failed to seed presets in Turso:', err.message);
+  }
+}
+
+async function seedUsersTurso() {
+  try {
+    for (const u of defaultUsers) {
+      const userExists = await client.execute({
+        sql: `SELECT id FROM users WHERE username = ?`,
+        args: [u.username]
+      });
+      if (userExists.rows.length === 0) {
+        const salt = generateSalt();
+        const hash = hashPassword(u.password, salt);
+        await client.execute({
+          sql: `INSERT INTO users (id, username, password_hash, salt, full_name, role)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+          args: [u.id, u.username, hash, salt, u.full_name, u.role]
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Failed to seed default users in Turso:', err.message);
   }
 }
 
@@ -256,7 +376,10 @@ const dbOperations = {
         });
       });
     }
-  }
+  },
+
+  hashPassword,
+  generateSalt
 };
 
 module.exports = dbOperations;

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const crypto = require('crypto');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const db = require('./database');
 
@@ -93,10 +94,145 @@ The safety compliance division prescribes the following actions:
 3. **Standard Operating Procedure Review (Target: 7 Days):** Update Job Safety Analysis (JSA) documents for ${inputs.incident_type} activities.`;
 }
 
+// --- AUTHENTICATION MIDDLEWARE ---
+async function requireAuth(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Missing or invalid token format.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const session = await db.get('SELECT * FROM sessions WHERE token = ?', [token]);
+    if (!session) {
+      return res.status(401).json({ error: 'Unauthorized: Session not found.' });
+    }
+
+    const expiresAt = new Date(session.expires_at);
+    if (expiresAt < new Date()) {
+      await db.run('DELETE FROM sessions WHERE token = ?', [token]);
+      return res.status(401).json({ error: 'Unauthorized: Session expired.' });
+    }
+
+    const user = await db.get('SELECT id, username, full_name, role FROM users WHERE id = ?', [session.user_id]);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized: User not found.' });
+    }
+
+    req.user = user;
+    req.token = token;
+    next();
+  } catch (err) {
+    console.error('Auth middleware error:', err);
+    return res.status(500).json({ error: 'Internal server error during authentication.' });
+  }
+}
+
 // --- API ROUTES ---
 
+// 0. Authentication Endpoints
+app.post('/api/auth/register', async (req, res) => {
+  const { username, password, full_name, role } = req.body;
+  if (!username || !password || !full_name || !role) {
+    return res.status(400).json({ error: 'Missing required fields for registration.' });
+  }
+
+  try {
+    const existing = await db.get('SELECT id FROM users WHERE username = ?', [username.toLowerCase().trim()]);
+    if (existing) {
+      return res.status(400).json({ error: 'Username already taken.' });
+    }
+
+    const userId = 'usr-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    const salt = db.generateSalt();
+    const hash = db.hashPassword(password, salt);
+
+    await db.run(
+      'INSERT INTO users (id, username, password_hash, salt, full_name, role) VALUES (?, ?, ?, ?, ?, ?)',
+      [userId, username.toLowerCase().trim(), hash, salt, full_name.trim(), role.trim()]
+    );
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    await db.run('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)', [
+      token,
+      userId,
+      expiresAt.toISOString()
+    ]);
+
+    res.status(201).json({
+      token,
+      user: {
+        username: username.toLowerCase().trim(),
+        full_name: full_name.trim(),
+        role: role.trim()
+      }
+    });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ error: 'Failed to register: ' + err.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required.' });
+  }
+
+  try {
+    const user = await db.get('SELECT * FROM users WHERE username = ?', [username.toLowerCase().trim()]);
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid username or password.' });
+    }
+
+    const hash = db.hashPassword(password, user.salt);
+    if (hash !== user.password_hash) {
+      return res.status(400).json({ error: 'Invalid username or password.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    await db.run('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)', [
+      token,
+      user.id,
+      expiresAt.toISOString()
+    ]);
+
+    res.json({
+      token,
+      user: {
+        username: user.username,
+        full_name: user.full_name,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Failed to login: ' + err.message });
+  }
+});
+
+app.post('/api/auth/logout', requireAuth, async (req, res) => {
+  try {
+    await db.run('DELETE FROM sessions WHERE token = ?', [req.token]);
+    res.json({ success: true, message: 'Logged out successfully.' });
+  } catch (err) {
+    console.error('Logout error:', err);
+    res.status(500).json({ error: 'Failed to logout: ' + err.message });
+  }
+});
+
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  res.json({ user: req.user });
+});
+
 // 1. Get Preset Templates
-app.get('/api/templates', async (req, res) => {
+app.get('/api/templates', requireAuth, async (req, res) => {
   try {
     const templates = await db.all('SELECT * FROM template_presets');
     res.json(templates);
@@ -106,7 +242,7 @@ app.get('/api/templates', async (req, res) => {
 });
 
 // 2. Generate Incident Report
-app.post('/api/generate', async (req, res) => {
+app.post('/api/generate', requireAuth, async (req, res) => {
   const startTime = Date.now();
   const {
     supervisor_name,
@@ -134,7 +270,7 @@ app.post('/api/generate', async (req, res) => {
       try {
         isMock = false;
         const model = genAI.getGenerativeModel({ 
-          model: 'gemini-1.5-flash-latest',
+          model: 'gemini-1.5-flash',
           systemInstruction: `You are an expert Safety Director and Regulatory Compliance Auditor for Crownridge LLP, a heavy civil infrastructure construction firm. Your task is to generate a highly professional, structured, and audit-ready Safety Incident Report suitable for submission to regulatory safety bodies. Format the output strictly in clean Markdown using standard headers. Do not use creative adjectives or emotional language. Keep statements factual and precise.`
         });
 
@@ -233,7 +369,7 @@ List 3-4 specific, actionable recommendations with targets:
 });
 
 // 3. Get Generation History
-app.get('/api/history', async (req, res) => {
+app.get('/api/history', requireAuth, async (req, res) => {
   try {
     const reports = await db.all(`
       SELECT r.id, r.supervisor_name, r.site_location, r.incident_timestamp, 
@@ -249,7 +385,7 @@ app.get('/api/history', async (req, res) => {
 });
 
 // 4. Get Report Details
-app.get('/api/history/:id', async (req, res) => {
+app.get('/api/history/:id', requireAuth, async (req, res) => {
   try {
     const report = await db.get('SELECT * FROM incident_reports WHERE id = ?', [req.params.id]);
     if (!report) {
@@ -263,7 +399,7 @@ app.get('/api/history/:id', async (req, res) => {
 });
 
 // 5. Submit Quality Rating & Feedback
-app.post('/api/feedback', async (req, res) => {
+app.post('/api/feedback', requireAuth, async (req, res) => {
   const { report_id, rating_stars, comments } = req.body;
   if (!report_id || !rating_stars) {
     return res.status(400).json({ error: 'Missing report ID or star rating.' });
@@ -291,7 +427,7 @@ app.post('/api/feedback', async (req, res) => {
 });
 
 // 6. Admin Analytics
-app.get('/api/admin/analytics', async (req, res) => {
+app.get('/api/admin/analytics', requireAuth, async (req, res) => {
   try {
     // Total generations
     const countRow = await db.get('SELECT COUNT(*) as total FROM incident_reports');

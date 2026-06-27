@@ -11,6 +11,246 @@ let activeRating = 0;
 let severityChartInstance = null;
 let ratingsChartInstance = null;
 
+// Auth State
+let currentUser = null;
+let authToken = localStorage.getItem('token') || null;
+
+// --- API FETCH WRAPPER WITH AUTHENTICATION ---
+async function fetchAPI(endpoint, options = {}) {
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  
+  options.headers = options.headers || {};
+  if (authToken) {
+    options.headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  
+  if (options.body && typeof options.body === 'string' && !options.headers['Content-Type']) {
+    options.headers['Content-Type'] = 'application/json';
+  }
+
+  const response = await fetch(url, options);
+  
+  if (response.status === 401) {
+    logoutUser();
+    throw new Error('Session expired or unauthorized. Please log in again.');
+  }
+  
+  return response;
+}
+
+function logoutUser() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  authToken = null;
+  currentUser = null;
+  
+  document.getElementById('login-overlay').classList.remove('hidden');
+  document.getElementById('user-profile-chip').classList.add('hidden');
+  document.getElementById('logout-btn').classList.add('hidden');
+  
+  const supNameInput = document.getElementById('supervisor_name');
+  const supRoleInput = document.getElementById('supervisor_role');
+  if (supNameInput) {
+    supNameInput.value = '';
+    supNameInput.readOnly = false;
+    supNameInput.classList.remove('autofilled-locked');
+  }
+  if (supRoleInput) {
+    supRoleInput.value = '';
+    supRoleInput.readOnly = false;
+    supRoleInput.classList.remove('autofilled-locked');
+  }
+
+  showToast('Logged out successfully.');
+}
+
+function applyUserProfile(user) {
+  currentUser = user;
+  
+  const supNameInput = document.getElementById('supervisor_name');
+  const supRoleInput = document.getElementById('supervisor_role');
+  if (supNameInput) {
+    supNameInput.value = user.full_name;
+    supNameInput.readOnly = true;
+    supNameInput.classList.add('autofilled-locked');
+  }
+  if (supRoleInput) {
+    supRoleInput.value = user.role;
+    supRoleInput.readOnly = true;
+    supRoleInput.classList.add('autofilled-locked');
+  }
+  
+  document.getElementById('header-user-name').textContent = user.full_name;
+  document.getElementById('header-user-role').textContent = user.role;
+  document.getElementById('user-profile-chip').classList.remove('hidden');
+  document.getElementById('logout-btn').classList.remove('hidden');
+  
+  document.getElementById('login-overlay').classList.add('hidden');
+  
+  document.getElementById('auth-login-form').reset();
+  document.getElementById('auth-register-form').reset();
+  
+  showToast(`Welcome back, ${user.full_name}!`);
+}
+
+async function checkAuthStatus() {
+  if (!authToken) {
+    document.getElementById('login-overlay').classList.remove('hidden');
+    return;
+  }
+  
+  try {
+    const res = await fetchAPI('/api/auth/me');
+    if (!res.ok) throw new Error('Unauthorized');
+    const data = await res.json();
+    
+    currentUser = data.user;
+    localStorage.setItem('user', JSON.stringify(currentUser));
+    
+    applyUserProfile(currentUser);
+    
+    // Load auth-restricted data
+    loadPresets();
+    loadHistory();
+    loadAnalytics();
+  } catch (err) {
+    console.error('Initial auth check failed:', err);
+    logoutUser();
+  }
+}
+
+function initAuthUI() {
+  const loginOverlay = document.getElementById('login-overlay');
+  const tabLoginBtn = document.getElementById('tab-login-btn');
+  const tabRegisterBtnUi = document.getElementById('tab-register-btn-ui');
+  const authLoginForm = document.getElementById('auth-login-form');
+  const authRegisterForm = document.getElementById('auth-register-form');
+  const switchToRegister = document.getElementById('switch-to-register');
+  const switchToLogin = document.getElementById('switch-to-login');
+  const logoutBtn = document.getElementById('logout-btn');
+  
+  const loginErrorMsg = document.getElementById('login-error-msg');
+  const registerErrorMsg = document.getElementById('register-error-msg');
+
+  function showLoginForm() {
+    tabLoginBtn.classList.add('active');
+    tabRegisterBtnUi.classList.remove('active');
+    authLoginForm.classList.remove('hidden');
+    authRegisterForm.classList.add('hidden');
+    loginErrorMsg.classList.add('hidden');
+  }
+
+  function showRegisterForm() {
+    tabLoginBtn.classList.remove('active');
+    tabRegisterBtnUi.classList.add('active');
+    authLoginForm.classList.add('hidden');
+    authRegisterForm.classList.remove('hidden');
+    registerErrorMsg.classList.add('hidden');
+  }
+
+  tabLoginBtn.addEventListener('click', showLoginForm);
+  tabRegisterBtnUi.addEventListener('click', showRegisterForm);
+  switchToRegister.addEventListener('click', (e) => {
+    e.preventDefault();
+    showRegisterForm();
+  });
+  switchToLogin.addEventListener('click', (e) => {
+    e.preventDefault();
+    showLoginForm();
+  });
+
+  authLoginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginErrorMsg.classList.add('hidden');
+    
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed.');
+      }
+
+      authToken = data.token;
+      currentUser = data.user;
+      
+      localStorage.setItem('token', authToken);
+      localStorage.setItem('user', JSON.stringify(currentUser));
+      
+      applyUserProfile(currentUser);
+      
+      loadPresets();
+      loadHistory();
+      loadAnalytics();
+    } catch (err) {
+      loginErrorMsg.textContent = err.message;
+      loginErrorMsg.classList.remove('hidden');
+      showToast(err.message, true);
+    }
+  });
+
+  authRegisterForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    registerErrorMsg.classList.add('hidden');
+    
+    const username = document.getElementById('register-username').value;
+    const fullName = document.getElementById('register-fullname').value;
+    const role = document.getElementById('register-role').value;
+    const password = document.getElementById('register-password').value;
+    
+    if (password.length < 6) {
+      registerErrorMsg.textContent = 'Password must be at least 6 characters.';
+      registerErrorMsg.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, full_name: fullName, role })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Registration failed.');
+      }
+
+      authToken = data.token;
+      currentUser = data.user;
+      
+      localStorage.setItem('token', authToken);
+      localStorage.setItem('user', JSON.stringify(currentUser));
+      
+      applyUserProfile(currentUser);
+      
+      loadPresets();
+      loadHistory();
+      loadAnalytics();
+    } catch (err) {
+      registerErrorMsg.textContent = err.message;
+      registerErrorMsg.classList.remove('hidden');
+      showToast(err.message, true);
+    }
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    try {
+      await fetchAPI('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.warn('Backend logout failed:', err);
+    }
+    logoutUser();
+  });
+}
+
 // DOM Elements
 const navButtons = document.querySelectorAll('.nav-btn');
 const viewPanels = document.querySelectorAll('.view-panel');
@@ -68,15 +308,15 @@ const toast = document.getElementById('toast');
 const toastMsg = document.getElementById('toast-msg');
 
 // Initial Setup
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   initNavigation();
   initFormTabs();
   initCharacterCounter();
-  loadPresets();
-  loadHistory();
-  loadAnalytics();
   initStarRating();
+  
+  initAuthUI();
+  await checkAuthStatus();
 
   // Set default date-time to now
   const now = new Date();
@@ -210,7 +450,7 @@ function initCharacterCounter() {
 // ==========================================
 async function loadPresets() {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/templates`);
+    const res = await fetchAPI('/api/templates');
     if (!res.ok) throw new Error('Failed to load presets');
     const presets = await res.json();
     
@@ -330,9 +570,8 @@ async function generateSafetyReport(payload) {
   }, 1000);
 
   try {
-    const res = await fetch(`${API_BASE_URL}/api/generate`, {
+    const res = await fetchAPI('/api/generate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
@@ -465,9 +704,8 @@ async function submitFeedbackData() {
   if (!currentReportId || activeRating === 0) return;
 
   try {
-    const res = await fetch(`${API_BASE_URL}/api/feedback`, {
+    const res = await fetchAPI('/api/feedback', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         report_id: currentReportId,
         rating_stars: activeRating,
@@ -530,7 +768,7 @@ btnDownloadPdf.addEventListener('click', () => {
 // ==========================================
 async function loadHistory() {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/history`);
+    const res = await fetchAPI('/api/history');
     if (!res.ok) throw new Error('Failed to load incident registers');
     const reports = await res.json();
     
@@ -609,7 +847,7 @@ filterType.addEventListener('change', loadHistory);
 // ==========================================
 async function openReportModal(reportId) {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/history/${reportId}`);
+    const res = await fetchAPI(`/api/history/${reportId}`);
     if (!res.ok) throw new Error('Failed to retrieve safety sheet.');
     const report = await res.json();
     
@@ -678,7 +916,7 @@ modalBtnPdf.addEventListener('click', () => {
 // ==========================================
 async function loadAnalytics() {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/admin/analytics`);
+    const res = await fetchAPI('/api/admin/analytics');
     if (!res.ok) throw new Error('Failed to load analytics metrics.');
     const data = await res.json();
     
