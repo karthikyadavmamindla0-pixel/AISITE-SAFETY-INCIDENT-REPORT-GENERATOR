@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crownridge LLP - Safety Incident Report Generator</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Chart.js for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Marked.js for Markdown parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="header-logo">
+      <div class="logo-icon"><i class="fa-solid fa-helmet-safety"></i></div>
+      <div class="logo-text">
+        <span class="company-name">CROWNRIDGE LLP</span>
+        <span class="product-name">AI Safety Report Desk</span>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <button class="nav-btn active" data-target="workspace-view" id="nav-workspace-btn">
+        <i class="fa-solid fa-pen-ruler"></i> Workspace
+      </button>
+      <button class="nav-btn" data-target="register-view" id="nav-register-btn">
+        <i class="fa-solid fa-list-check"></i> Safety Register
+      </button>
+      <button class="nav-btn" data-target="analytics-view" id="nav-analytics-btn">
+        <i class="fa-solid fa-chart-line"></i> Admin Panel
+      </button>
+    </nav>
+    <div class="header-actions">
+      <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
+        <i class="fa-solid fa-moon"></i>
+      </button>
+      <div class="system-status">
+        <span class="status-indicator online"></span>
+        <span class="status-label">AI Engine Connected</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-content">
+    
+    <!-- SECTION 1: WORKSPACE VIEW (FORM & REPORT GENERATION) -->
+    <section id="workspace-view" class="view-panel active">
+      <div class="workspace-grid">
+        
+        <!-- Left Column: Form & Presets -->
+        <div class="panel-left">
+          
+          <!-- Template Presets Selector -->
+          <div class="preset-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-wand-magic-sparkles text-amber"></i> Quick Template Presets</h3>
+              <span class="header-helper">Autofill common construction scenarios</span>
+            </div>
+            <div class="preset-buttons" id="presets-container">
+              <!-- Dynamically loaded templates -->
+              <div class="preset-skeleton"></div>
+              <div class="preset-skeleton"></div>
+              <div class="preset-skeleton"></div>
+            </div>
+          </div>
+
+          <!-- Incident Form -->
+          <form id="incident-form" class="incident-form">
+            <div class="form-header">
+              <h2><i class="fa-solid fa-file-signature text-amber"></i> Incident Logs Input</h2>
+              <p>Site supervisor inputs incident variables to compile regulatory-grade reports.</p>
+            </div>
+
+            <!-- Form Tabs Navigation -->
+            <div class="form-tabs">
+              <button type="button" class="tab-trigger active" data-tab="tab-personnel">1. Site & Personnel</button>
+              <button type="button" class="tab-trigger" data-tab="tab-details">2. Incident Profile</button>
+              <button type="button" class="tab-trigger" data-tab="tab-narrative">3. Narrative & Logs</button>
+            </div>
+
+            <!-- TAB 1: SITE & PERSONNEL -->
+            <div class="tab-content active" id="tab-personnel">
+              <div class="form-group">
+                <label for="supervisor_name">Supervisor Full Name <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <i class="fa-solid fa-user-tie input-icon"></i>
+                  <input type="text" id="supervisor_name" name="supervisor_name" placeholder="e.g. Ramesh Kumar" required>
+                </div>
+                <span class="field-error" id="err-supervisor_name">This field is required</span>
+              </div>
+
+              <div class="form-group">
+                <label for="supervisor_role">Designation / Role <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <i class="fa-solid fa-shield-halved input-icon"></i>
+                  <input type="text" id="supervisor_role" name="supervisor_role" placeholder="e.g. Senior Safety Officer" required>
+                </div>
+                <span class="field-error" id="err-supervisor_role">This field is required</span>
+              </div>
+
+              <div class="form-group">
+                <label for="site_location">Project Location / Construction Site <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <i class="fa-solid fa-location-dot input-icon"></i>
+                  <input type="text" id="site_location" name="site_location" placeholder="e.g. Flyover Pier 24 Site, Gachibowli, Hyderabad" required>
+                </div>
+                <span class="field-error" id="err-site_location">This field is required</span>
+              </div>
+            </div>
+
+            <!-- TAB 2: INCIDENT PROFILE -->
+            <div class="tab-content" id="tab-details">
+              <div class="form-row">
+                <div class="form-group col-6">
+                  <label for="incident_timestamp">Date & Time of Incident <span class="required">*</span></label>
+                  <div class="input-wrapper">
+                    <i class="fa-solid fa-calendar-clock input-icon"></i>
+                    <input type="datetime-local" id="incident_timestamp" name="incident_timestamp" required>
+                  </div>
+                  <span class="field-error" id="err-incident_timestamp">Please enter a valid date and time</span>
+                </div>
+
+                <div class="form-group col-6">
+                  <label for="incident_type">Incident Classification <span class="required">*</span></label>
+                  <div class="input-wrapper">
+                    <i class="fa-solid fa-tags input-icon"></i>
+                    <select id="incident_type" name="incident_type" required>
+                      <option value="" disabled selected>Select Classification</option>
+                      <option value="Fall from Height">Fall from Height</option>
+                      <option value="Excavation Cave-in">Excavation Cave-in</option>
+                      <option value="Electrical Short Circuit">Electrical Short Circuit / Flash</option>
+                      <option value="Equipment & Machinery Accident">Equipment & Machinery Accident</option>
+                      <option value="Struck by Material / Object">Struck by Material / Object</option>
+                      <option value="Vehicle / Dump Truck Collision">Vehicle / Dump Truck Collision</option>
+                      <option value="Near Miss (No Injury)">Near Miss (No Injury)</option>
+                      <option value="Other Safety Hazard">Other Safety Hazard</option>
+                    </select>
+                  </div>
+                  <span class="field-error" id="err-incident_type">Please select an incident type</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Severity Level <span class="required">*</span></label>
+                <div class="severity-segmented-control">
+                  <label class="severity-option option-low">
+                    <input type="radio" name="severity_level" value="Low" required>
+                    <span class="option-pill"><i class="fa-solid fa-circle-info"></i> Low</span>
+                  </label>
+                  <label class="severity-option option-medium">
+                    <input type="radio" name="severity_level" value="Medium">
+                    <span class="option-pill"><i class="fa-solid fa-triangle-exclamation"></i> Medium</span>
+                  </label>
+                  <label class="severity-option option-high">
+                    <input type="radio" name="severity_level" value="High">
+                    <span class="option-pill"><i class="fa-solid fa-circle-exclamation"></i> High</span>
+                  </label>
+                  <label class="severity-option option-critical">
+                    <input type="radio" name="severity_level" value="Critical">
+                    <span class="option-pill"><i class="fa-solid fa-radiation"></i> Critical</span>
+                  </label>
+                </div>
+                <span class="field-error" id="err-severity_level">Please select a severity rating</span>
+              </div>
+
+              <div class="form-group">
+                <label for="weather_conditions">Weather & Environmental Conditions <span class="helper-text">(Optional)</span></label>
+                <div class="input-wrapper">
+                  <i class="fa-solid fa-cloud-sun input-icon"></i>
+                  <input type="text" id="weather_conditions" name="weather_conditions" placeholder="e.g. Heavy Rain, High Winds, Clear & Sunny">
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 3: NARRATIVE & LOGS -->
+            <div class="tab-content" id="tab-narrative">
+              <div class="form-group">
+                <div class="label-header">
+                  <label for="raw_description">Incident Description / Supervisor Log <span class="required">*</span></label>
+                  <span class="char-counter" id="char-counter-desc">0 / 1000 characters</span>
+                </div>
+                <textarea id="raw_description" name="raw_description" rows="5" maxlength="1000" placeholder="Provide a chronological description of the event. What was the worker doing? What broke or failed? Who was affected?" required></textarea>
+                <span class="field-error" id="err-raw_description">Incident description must be at least 15 characters</span>
+              </div>
+
+              <div class="form-group">
+                <label for="immediate_actions">Immediate Corrective Actions Taken <span class="helper-text">(Optional)</span></label>
+                <textarea id="immediate_actions" name="immediate_actions" rows="3" placeholder="e.g. Evacuated site block, administered first aid, cordoned off trench wall collapse, shut down electrical mains."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="witness_details">Witness Details & Statements <span class="helper-text">(Optional)</span></label>
+                <textarea id="witness_details" name="witness_details" rows="2" placeholder="Names, designations, and brief statements if any."></textarea>
+              </div>
+            </div>
+
+            <!-- Form Footer Actions -->
+            <div class="form-footer">
+              <button type="reset" class="btn btn-secondary" id="form-reset-btn">
+                <i class="fa-solid fa-eraser"></i> Clear Fields
+              </button>
+              <button type="submit" class="btn btn-primary" id="form-submit-btn">
+                <span class="btn-text"><i class="fa-solid fa-brain"></i> Generate Safety Report</span>
+              </button>
+            </div>
+          </form>
+
+        </div>
+
+        <!-- Right Column: AI Output Display -->
+        <div class="panel-right">
+          <div class="output-card" id="output-panel">
+            
+            <!-- Default Empty/Welcome State -->
+            <div class="output-empty-state" id="output-empty">
+              <div class="empty-icon"><i class="fa-solid fa-receipt"></i></div>
+              <h2>Report Review Desk</h2>
+              <p>Fill out the supervisor incident logs on the left and submit to generate a structured regulatory-compliant incident report powered by Crownridge AI.</p>
+              <div class="empty-compliance-badge">
+                <i class="fa-solid fa-building-shield"></i> Standard Regulatory Safety Standards BOCW Compliance
+              </div>
+            </div>
+
+            <!-- Generating / Loading State -->
+            <div class="output-loading-state hidden" id="output-loading">
+              <div class="spinner-container">
+                <div class="loading-spinner"></div>
+                <i class="fa-solid fa-helmet-safety loading-icon-center"></i>
+              </div>
+              <h3>Assembling Safety Audit Context...</h3>
+              <p class="loading-step" id="loading-step-text">Connecting to Gemini AI Engine...</p>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progress-fill"></div>
+              </div>
+            </div>
+
+            <!-- Report Renders Here -->
+            <div class="output-rendered-state hidden" id="output-content">
+              <div class="output-control-bar">
+                <div class="report-meta-info">
+                  <span class="meta-tag" id="meta-duration"><i class="fa-regular fa-clock"></i> Generated in 1.4s</span>
+                  <span class="meta-tag hidden" id="meta-mock-badge"><i class="fa-solid fa-circle-nodes"></i> Offline Draft</span>
+                </div>
+                <div class="control-actions">
+                  <button class="action-btn" id="btn-copy-report" title="Copy Report Markdown">
+                    <i class="fa-regular fa-copy"></i> Copy
+                  </button>
+                  <button class="action-btn" id="btn-share-report" title="Share Report Link">
+                    <i class="fa-solid fa-share-nodes"></i> Share
+                  </button>
+                  <button class="action-btn btn-success" id="btn-download-pdf" title="Download Official PDF">
+                    <i class="fa-regular fa-file-pdf"></i> Download PDF
+                  </button>
+                  <button class="action-btn btn-warning" id="btn-regenerate-report" title="Regenerate Report">
+                    <i class="fa-solid fa-arrows-rotate"></i> Regenerate
+                  </button>
+                </div>
+              </div>
+
+              <!-- Sheet Container (Print styling wraps this) -->
+              <div class="report-document-sheet" id="report-sheet">
+                <!-- Content injected dynamically via Marked.js -->
+                <div class="report-markdown-body" id="report-body"></div>
+              </div>
+
+              <!-- User Feedback / Quality Review Panel -->
+              <div class="feedback-rating-panel" id="feedback-panel">
+                <h4><i class="fa-regular fa-star text-amber"></i> Validate Report Output Quality</h4>
+                <p>Is this generated safety report accurate and ready for regulatory compliance records?</p>
+                
+                <div class="rating-action-row">
+                  <div class="star-rating-control" id="star-rating">
+                    <i class="fa-regular fa-star star-btn" data-value="1"></i>
+                    <i class="fa-regular fa-star star-btn" data-value="2"></i>
+                    <i class="fa-regular fa-star star-btn" data-value="3"></i>
+                    <i class="fa-regular fa-star star-btn" data-value="4"></i>
+                    <i class="fa-regular fa-star star-btn" data-value="5"></i>
+                  </div>
+                  <span class="rating-text" id="rating-label">Select star rating</span>
+                </div>
+
+                <div class="feedback-text-area hidden" id="feedback-comment-wrapper">
+                  <input type="text" id="feedback-comment" placeholder="Add specific suggestions or compliance notes (Optional)">
+                  <button class="btn btn-primary btn-sm" id="btn-submit-feedback">
+                    Submit Feedback
+                  </button>
+                </div>
+                <div class="feedback-success-message hidden" id="feedback-success">
+                  <i class="fa-solid fa-circle-check text-green"></i> Thank you! Your quality review has been saved to admin metrics.
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 2: REGISTER VIEW (HISTORY LIST) -->
+    <section id="register-view" class="view-panel">
+      <div class="register-container">
+        <div class="register-header">
+          <div class="register-title">
+            <h2><i class="fa-solid fa-folder-open text-amber"></i> Permanent Incident Register</h2>
+            <p>Complete historical registry of safety reports generated for regulatory compliance review.</p>
+          </div>
+          <div class="register-filters">
+            <div class="filter-item search-bar">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="register-search" placeholder="Search by site, supervisor, or keyword...">
+            </div>
+            <div class="filter-item">
+              <select id="filter-severity">
+                <option value="ALL">All Severities</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <select id="filter-type">
+                <option value="ALL">All Classifications</option>
+                <option value="Fall from Height">Fall from Height</option>
+                <option value="Excavation Cave-in">Excavation Cave-in</option>
+                <option value="Electrical Short Circuit">Electrical Short Circuit</option>
+                <option value="Equipment & Machinery Accident">Equipment & Machinery</option>
+                <option value="Struck by Material / Object">Struck by Object</option>
+                <option value="Vehicle / Dump Truck Collision">Vehicle Collision</option>
+                <option value="Near Miss (No Injury)">Near Miss</option>
+                <option value="Other Safety Hazard">Other Safety Hazard</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="register-table-wrapper">
+          <table class="register-table">
+            <thead>
+              <tr>
+                <th>Date / Time</th>
+                <th>Project Site Location</th>
+                <th>Incident Type</th>
+                <th>Severity</th>
+                <th>Reporting Supervisor</th>
+                <th>AI Quality Score</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="register-table-body">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: ANALYTICS VIEW -->
+    <section id="analytics-view" class="view-panel">
+      <div class="analytics-container">
+        
+        <div class="analytics-header">
+          <h2><i class="fa-solid fa-chart-pie text-amber"></i> Admin Quality & Audit Metrics</h2>
+          <p>Real-time analytics monitor site safety incident distributions and output report accuracy trends.</p>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div class="metrics-grid">
+          <div class="metric-kpi">
+            <div class="kpi-icon icon-blue"><i class="fa-solid fa-file-shield"></i></div>
+            <div class="kpi-data">
+              <span class="kpi-value" id="kpi-total-reports">0</span>
+              <span class="kpi-title">Total Reports Generated</span>
+            </div>
+          </div>
+          <div class="metric-kpi">
+            <div class="kpi-icon icon-amber"><i class="fa-solid fa-star"></i></div>
+            <div class="kpi-data">
+              <span class="kpi-value" id="kpi-average-rating">0.0 / 5</span>
+              <span class="kpi-title">Average Quality Rating</span>
+            </div>
+          </div>
+          <div class="metric-kpi">
+            <div class="kpi-icon icon-green"><i class="fa-solid fa-bolt"></i></div>
+            <div class="kpi-data">
+              <span class="kpi-value" id="kpi-response-time">0 ms</span>
+              <span class="kpi-title">Avg. Generator Latency</span>
+            </div>
+          </div>
+          <div class="metric-kpi">
+            <div class="kpi-icon icon-red"><i class="fa-solid fa-shield-virus"></i></div>
+            <div class="kpi-data">
+              <span class="kpi-value" id="kpi-active-standards">BOCW / IS</span>
+              <span class="kpi-title">Compliance Directives</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Incident Severity Breakdown</h3>
+            <div class="chart-wrapper">
+              <canvas id="chart-severity"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h3>Report Quality Score Distribution</h3>
+            <div class="chart-wrapper">
+              <canvas id="chart-ratings"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid Row -->
+        <div class="charts-row">
+          <div class="chart-card full-width">
+            <h3>Top Incident Locations (High Frequency Sites)</h3>
+            <div class="chart-wrapper list-wrapper">
+              <ul class="analytics-site-list" id="analytics-site-list">
+                <!-- Dynamically populated list -->
+              </ul>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- View History Modal (Popup to view report details from list) -->
+  <div class="modal-backdrop hidden" id="report-modal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modal-report-title"><i class="fa-regular fa-file-text"></i> Safety Report Details</h3>
+        <button class="modal-close-btn" id="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-control-bar">
+          <span class="meta-tag" id="modal-meta-tag">Generated Report</span>
+          <div class="control-actions">
+            <button class="action-btn" id="modal-btn-copy"><i class="fa-regular fa-copy"></i> Copy Markdown</button>
+            <button class="action-btn btn-success" id="modal-btn-pdf"><i class="fa-regular fa-file-pdf"></i> Save PDF</button>
+          </div>
+        </div>
+        <div class="report-document-sheet modal-sheet">
+          <div class="report-markdown-body" id="modal-report-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div class="toast-notification hidden" id="toast">
+    <i class="fa-solid fa-circle-check text-green" id="toast-icon"></i>
+    <span class="toast-message" id="toast-msg">Success Message</span>
+  </div>
+
+  <!-- Script logic -->
+  <script src="app.js"></script>
+</body>
+</html>
