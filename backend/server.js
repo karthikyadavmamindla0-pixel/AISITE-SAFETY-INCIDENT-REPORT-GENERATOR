@@ -133,7 +133,7 @@ app.post('/api/generate', async (req, res) => {
     if (genAI) {
       isMock = false;
       const model = genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-latest',
         systemInstruction: `You are an expert Safety Director and Regulatory Compliance Auditor for Crownridge LLP, a heavy civil infrastructure construction firm. Your task is to generate a highly professional, structured, and audit-ready Safety Incident Report suitable for submission to regulatory safety bodies. Format the output strictly in clean Markdown using standard headers. Do not use creative adjectives or emotional language. Keep statements factual and precise.`
       });
 
