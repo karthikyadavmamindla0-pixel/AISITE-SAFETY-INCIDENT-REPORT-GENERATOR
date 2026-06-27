@@ -131,13 +131,14 @@ app.post('/api/generate', async (req, res) => {
     let isMock = true;
 
     if (genAI) {
-      isMock = false;
-      const model = genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash-latest',
-        systemInstruction: `You are an expert Safety Director and Regulatory Compliance Auditor for Crownridge LLP, a heavy civil infrastructure construction firm. Your task is to generate a highly professional, structured, and audit-ready Safety Incident Report suitable for submission to regulatory safety bodies. Format the output strictly in clean Markdown using standard headers. Do not use creative adjectives or emotional language. Keep statements factual and precise.`
-      });
+      try {
+        isMock = false;
+        const model = genAI.getGenerativeModel({ 
+          model: 'gemini-1.5-flash-latest',
+          systemInstruction: `You are an expert Safety Director and Regulatory Compliance Auditor for Crownridge LLP, a heavy civil infrastructure construction firm. Your task is to generate a highly professional, structured, and audit-ready Safety Incident Report suitable for submission to regulatory safety bodies. Format the output strictly in clean Markdown using standard headers. Do not use creative adjectives or emotional language. Keep statements factual and precise.`
+        });
 
-      const prompt = `
+        const prompt = `
 Generate a structured safety incident report based on the following supervisor inputs:
 
 Supervisor Name: ${supervisor_name}
@@ -187,9 +188,14 @@ List 3-4 specific, actionable recommendations with targets:
 3. SOP updates.
 `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      reportMarkdown = response.text();
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        reportMarkdown = response.text();
+      } catch (geminiErr) {
+        console.error('Gemini API call failed, falling back to mock report:', geminiErr.message);
+        isMock = true;
+        reportMarkdown = generateMockReport(req.body) + `\n\n---\n\n> [!WARNING]\n> **AI Service Alert**: The live Google Gemini API returned a connection error ("${geminiErr.message}"). The report above was successfully generated using the local regulatory compliance templates for backup continuity. Please check your API Key configuration if this persists.`;
+      }
     } else {
       // Fallback to local mock report generator
       reportMarkdown = generateMockReport(req.body);
