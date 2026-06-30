@@ -1,3 +1,6 @@
+// Run database environment configuration and schema checks
+require('./database/dbSetup')();
+
 const app = require('./app');
 const prisma = require('./database/prisma');
 const seed = require('./database/seed');
