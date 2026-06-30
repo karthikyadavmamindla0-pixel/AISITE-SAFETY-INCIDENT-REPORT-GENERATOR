@@ -336,7 +336,7 @@
           <div class="register-filters">
             <div class="filter-item search-bar">
               <i class="fa-solid fa-magnifying-glass"></i>
-              <input type="text" id="register-search" placeholder="Search by site, supervisor, or keyword...">
+              <input type="text" id="register-search" placeholder="Search by title, supervisor, or keyword...">
             </div>
             <div class="filter-item">
               <select id="filter-severity">
@@ -360,6 +360,15 @@
                 <option value="Other Safety Hazard">Other Safety Hazard</option>
               </select>
             </div>
+            <div class="filter-item">
+              <select id="filter-sort">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </div>
+            <button id="btn-export-csv" class="btn btn-secondary" style="padding: 0.6rem 1rem; font-size: 0.85rem; height: 38px; display: flex; align-items: center; gap: 0.5rem; border-color: var(--border-color); color: var(--color-text-primary);" type="button">
+              <i class="fa-solid fa-file-csv text-amber"></i> Export CSV
+            </button>
           </div>
         </div>
 
@@ -367,12 +376,11 @@
           <table class="register-table">
             <thead>
               <tr>
-                <th>Date / Time</th>
-                <th>Project Site Location</th>
-                <th>Incident Type</th>
+                <th>Incident Title</th>
+                <th>Supervisor</th>
                 <th>Severity</th>
-                <th>Reporting Supervisor</th>
-                <th>AI Quality Score</th>
+                <th>Date</th>
+                <th>Created Time</th>
                 <th>Actions</th>
               </tr>
             </thead>

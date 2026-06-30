@@ -1,0 +1,65 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id
+  username      String    @unique
+  password_hash String
+  salt          String
+  full_name     String
+  role          String
+  created_at    DateTime  @default(now())
+  sessions      Session[]
+}
+
+model Session {
+  token      String   @id
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  expires_at DateTime
+  created_at DateTime @default(now())
+}
+
+model TemplatePreset {
+  id                 String  @id
+  preset_name        String  @unique
+  incident_type      String
+  severity_level     String
+  raw_description    String
+  immediate_actions  String?
+  weather_conditions String?
+}
+
+model IncidentReport {
+  id                  String     @id
+  supervisor_name     String
+  supervisor_role     String?
+  incident_title      String
+  location            String
+  incident_date       String
+  severity            String
+  incident_description String
+  weather_conditions   String?
+  immediate_actions   String?
+  witness_details     String?
+  ai_generated_report String
+  pdf_filename        String?
+  response_time_ms    Int?
+  created_at          DateTime   @default(now())
+  feedbacks           Feedback[]
+}
+
+model Feedback {
+  id           String         @id
+  report_id    String
+  report       IncidentReport @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  rating_stars Int
+  comments     String?
+  created_at   DateTime       @default(now())
+}

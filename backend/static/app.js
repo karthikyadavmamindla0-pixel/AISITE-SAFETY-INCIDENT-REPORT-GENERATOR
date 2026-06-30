@@ -668,7 +668,7 @@ async function generateSafetyReport(payload) {
   }, 1000);
 
   try {
-    const res = await fetchAPI('/api/generate', {
+    const res = await fetchAPI('/api/report', {
       method: 'POST',
       body: JSON.stringify(payload)
     });
@@ -841,7 +841,7 @@ btnCopyReport.addEventListener('click', () => {
 
 btnShareReport.addEventListener('click', () => {
   if (!currentReportId) return;
-  const shareUrl = `${window.location.origin}/api/history/${currentReportId}`;
+  const shareUrl = `${window.location.origin}/api/reports/${currentReportId}`;
   navigator.clipboard.writeText(shareUrl)
     .then(() => showToast('Direct report access link copied to clipboard.'))
     .catch(() => showToast('Failed to copy link.', true));
@@ -869,42 +869,101 @@ btnDownloadPdf.addEventListener('click', () => {
 // ==========================================
 // SAFETY REGISTER (HISTORY & SEARCH)
 // ==========================================
+async function deleteReport(reportId) {
+  if (!confirm("Are you sure you want to delete this incident report? This action cannot be undone.")) {
+    return;
+  }
+  try {
+    const res = await fetchAPI(`/api/reports/${reportId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete report.');
+    showToast('Incident report permanently deleted.');
+    loadHistory();
+    loadAnalytics();
+  } catch (err) {
+    showToast('Failed to delete: ' + err.message, true);
+  }
+}
+window.deleteReport = deleteReport;
+
+async function exportCSV() {
+  try {
+    const res = await fetchAPI('/api/reports');
+    if (!res.ok) throw new Error('Failed to fetch safety records for CSV export.');
+    const reports = await res.json();
+    
+    if (reports.length === 0) {
+      showToast('No reports available for CSV export.', true);
+      return;
+    }
+
+    const headers = ['Report ID', 'Incident Title', 'Reporting Supervisor', 'Designation', 'Severity', 'Location', 'Incident Date', 'Created Timestamp'];
+    const csvRows = [headers.join(',')];
+
+    reports.forEach(r => {
+      const row = [
+        `"${r.id}"`,
+        `"${r.incident_title.replace(/"/g, '""')}"`,
+        `"${r.supervisor_name.replace(/"/g, '""')}"`,
+        `"${(r.supervisor_role || '').replace(/"/g, '""')}"`,
+        `"${r.severity}"`,
+        `"${r.location.replace(/"/g, '""')}"`,
+        `"${r.incident_date}"`,
+        `"${new Date(r.created_at).toISOString()}"`
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `crownridge_safety_incident_register_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Safety incident register exported to CSV.');
+  } catch (err) {
+    showToast('CSV Export failed: ' + err.message, true);
+  }
+}
+
 async function loadHistory() {
   try {
-    const res = await fetchAPI('/api/history');
+    const searchQuery = registerSearch.value.toLowerCase().trim();
+    const severityFilter = filterSeverity.value;
+    const sortOrder = document.getElementById('filter-sort') ? document.getElementById('filter-sort').value : 'newest';
+
+    const queryParams = new URLSearchParams({
+      search: searchQuery,
+      severity: severityFilter,
+      sort: sortOrder
+    });
+
+    const res = await fetchAPI(`/api/reports?${queryParams.toString()}`);
     if (!res.ok) throw new Error('Failed to load incident registers');
     const reports = await res.json();
     
     renderHistoryTable(reports);
   } catch (err) {
     console.error('History load failure:', err);
-    registerTableBody.innerHTML = `<tr><td colspan="7" class="text-red text-center">Failed to load safety register logs.</td></tr>`;
+    registerTableBody.innerHTML = `<tr><td colspan="6" class="text-red text-center">Failed to load safety register logs.</td></tr>`;
   }
 }
 
 function renderHistoryTable(reports) {
-  const searchQuery = registerSearch.value.toLowerCase().trim();
-  const severityFilter = filterSeverity.value;
   const classificationFilter = filterType.value;
 
-  // Filter
+  // Local filter for incident classification
   const filtered = reports.filter(r => {
-    const matchesSearch = 
-      r.supervisor_name.toLowerCase().includes(searchQuery) ||
-      r.site_location.toLowerCase().includes(searchQuery) ||
-      r.incident_type.toLowerCase().includes(searchQuery) ||
-      r.id.toLowerCase().includes(searchQuery);
-
-    const matchesSeverity = (severityFilter === 'ALL' || r.severity_level === severityFilter);
-    const matchesType = (classificationFilter === 'ALL' || r.incident_type === classificationFilter);
-
-    return matchesSearch && matchesSeverity && matchesType;
+    return (classificationFilter === 'ALL' || r.incident_type === classificationFilter || r.incident_title === classificationFilter);
   });
 
   registerTableBody.innerHTML = '';
   
   if (filtered.length === 0) {
-    registerTableBody.innerHTML = `<tr><td colspan="7" class="text-muted text-center">No reports match the active filters or search terms.</td></tr>`;
+    registerTableBody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">No reports match the active filters or search terms.</td></tr>`;
     return;
   }
 
@@ -912,26 +971,37 @@ function renderHistoryTable(reports) {
     const tr = document.createElement('tr');
     
     // Format timestamp
-    const date = new Date(r.incident_timestamp).toLocaleDateString('en-IN', {
+    const date = new Date(r.incident_date || r.incident_timestamp).toLocaleDateString('en-IN', {
       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
+    
+    const createdTime = new Date(r.created_at).toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit'
+    }) + ' on ' + new Date(r.created_at).toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric'
+    });
 
-    const severityClass = `badge-${r.severity_level.toLowerCase()}`;
-    const scoreBadge = r.rating_stars 
-      ? `<span class="star-badge"><i class="fa-solid fa-star"></i> ${r.rating_stars}</span>` 
-      : `<span class="text-muted" style="font-size:0.8rem;">Unrated</span>`;
+    const severityClass = `badge-${r.severity.toLowerCase()}`;
+    const pdfLink = r.pdf_filename 
+      ? `<a href="/pdfs/${r.pdf_filename}" download class="btn-view-report btn-success-text" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.25rem;" title="Download Official PDF"><i class="fa-solid fa-file-pdf"></i> PDF</a>` 
+      : `<button class="btn-view-report" onclick="window.openReportModal('${r.id}')"><i class="fa-regular fa-file-pdf"></i> PDF</button>`;
 
     tr.innerHTML = `
-      <td>${date}</td>
-      <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${r.site_location}"><strong>${r.site_location}</strong></td>
-      <td>${r.incident_type}</td>
-      <td><span class="badge ${severityClass}">${r.severity_level}</span></td>
+      <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${r.incident_title}"><strong>${r.incident_title}</strong></td>
       <td>${r.supervisor_name}</td>
-      <td>${scoreBadge}</td>
+      <td><span class="badge ${severityClass}">${r.severity}</span></td>
+      <td>${date}</td>
+      <td>${createdTime}</td>
       <td>
-        <button class="btn-view-report" onclick="openReportModal('${r.id}')">
-          <i class="fa-regular fa-folder-open"></i> Open Sheet
-        </button>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button class="btn-view-report" onclick="window.openReportModal('${r.id}')">
+            <i class="fa-regular fa-folder-open"></i> View
+          </button>
+          ${pdfLink}
+          <button class="btn-view-report" style="color: var(--color-error);" onclick="window.deleteReport('${r.id}')">
+            <i class="fa-solid fa-trash-can"></i> Delete
+          </button>
+        </div>
       </td>
     `;
     registerTableBody.appendChild(tr);
@@ -939,18 +1009,26 @@ function renderHistoryTable(reports) {
 }
 
 // Add filter event listeners
-registerSearch.addEventListener('input', () => {
-  loadHistory();
-});
+registerSearch.addEventListener('input', loadHistory);
 filterSeverity.addEventListener('change', loadHistory);
 filterType.addEventListener('change', loadHistory);
+
+const filterSort = document.getElementById('filter-sort');
+if (filterSort) {
+  filterSort.addEventListener('change', loadHistory);
+}
+
+const btnExportCsv = document.getElementById('btn-export-csv');
+if (btnExportCsv) {
+  btnExportCsv.addEventListener('click', exportCSV);
+}
 
 // ==========================================
 // MODAL DRAWER FOR RECORD RETRIEVAL
 // ==========================================
 async function openReportModal(reportId) {
   try {
-    const res = await fetchAPI(`/api/history/${reportId}`);
+    const res = await fetchAPI(`/api/reports/${reportId}`);
     if (!res.ok) throw new Error('Failed to retrieve safety sheet.');
     const report = await res.json();
     
