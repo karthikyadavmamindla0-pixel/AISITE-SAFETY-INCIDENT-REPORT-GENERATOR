@@ -1914,3 +1914,122 @@ button, input, select, textarea {
     flex: none;
   }
 }
+
+/* Custom connection settings pane inside login panel and page */
+.api-settings-link {
+  display: block;
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted) !important;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  cursor: pointer;
+}
+
+.api-settings-link:hover {
+  color: var(--color-accent) !important;
+  text-decoration: underline;
+}
+
+.connection-settings-panel h4 {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
+
+.connection-settings-panel p {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+/* ==========================================
+   MOBILE & TABLET UX REFINEMENTS
+   ========================================== */
+
+@media (max-width: 768px) {
+  /* Header actions layout adjustments */
+  .app-header {
+    gap: 0.75rem;
+  }
+  
+  .header-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .system-status {
+    padding: 0.35rem 0.5rem;
+    height: auto;
+    font-size: 0.7rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .system-status .status-label {
+    display: none; /* Hide label to save horizontal space, dot remains */
+  }
+  
+  .user-profile-chip {
+    padding: 0.25rem 0.5rem;
+    height: auto;
+    border-radius: var(--radius-sm);
+  }
+
+  .user-profile-chip .user-info-text .user-role {
+    display: none; /* Hide user role inside chip */
+  }
+
+  /* Table responsive column hiding */
+  .register-table th:nth-child(5),
+  .register-table td:nth-child(5),
+  .register-table th:nth-child(6),
+  .register-table td:nth-child(6) {
+    display: none !important;
+  }
+
+  /* Output bar control alignment */
+  .output-control-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .report-meta-info {
+    justify-content: center;
+  }
+
+  .control-actions {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.35rem;
+  }
+
+  .control-actions .action-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 0.5rem 0.25rem;
+    font-size: 0.75rem;
+    min-height: 38px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Form footer stack */
+  .form-footer {
+    flex-direction: column-reverse;
+    gap: 0.6rem;
+  }
+
+  .form-footer .btn {
+    width: 100%;
+    padding: 0.75rem;
+  }
+}

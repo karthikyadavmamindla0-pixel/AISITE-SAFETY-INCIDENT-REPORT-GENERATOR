@@ -55,6 +55,9 @@
       <button class="logout-btn hidden" id="logout-btn" title="Log Out">
         <i class="fa-solid fa-right-from-bracket"></i>
       </button>
+      <button class="theme-toggle-btn" id="api-settings-btn" title="API Server Settings">
+        <i class="fa-solid fa-server"></i>
+      </button>
       <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
         <i class="fa-solid fa-moon"></i>
       </button>
@@ -477,6 +480,32 @@
     </div>
   </div>
 
+  <!-- API Settings Modal -->
+  <div class="modal-backdrop hidden" id="api-settings-modal">
+    <div class="modal-container" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-server text-amber"></i> Server Connection Settings</h3>
+        <button class="modal-close-btn" id="btn-close-api-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="gap: 1.25rem;">
+        <p style="font-size: 0.88rem; color: var(--color-text-secondary); line-height: 1.5;">
+          Specify the backend API URL for this session. This is useful when running the client from mobile or separate hosting.
+        </p>
+        <div class="form-group">
+          <label for="modal-api-url" style="font-size: 0.8rem; font-weight: 600; color: var(--color-text-primary); display: block; margin-bottom: 0.5rem;">API Base URL</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-link input-icon"></i>
+            <input type="text" id="modal-api-url" placeholder="e.g. http://localhost:5000">
+          </div>
+        </div>
+        <div class="settings-actions" style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.5rem;">
+          <button class="btn btn-secondary btn-sm" id="btn-cancel-api-modal">Cancel</button>
+          <button class="btn btn-primary btn-sm" id="btn-save-api-modal">Save & Reconnect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Login Overlay (Full Screen) -->
   <div class="login-overlay hidden" id="login-overlay">
     <div class="login-container">
@@ -604,6 +633,27 @@
             Already have an account? <a href="#" id="switch-to-login">Log in here</a>
           </p>
         </form>
+
+        <!-- Connection Settings Link -->
+        <a href="#" id="link-configure-api" class="api-settings-link" style="display: block; text-align: center; margin-top: 1.5rem; font-size: 0.82rem; color: var(--color-text-muted); text-decoration: none; transition: color var(--transition-fast);">
+          <i class="fa-solid fa-gear"></i> Server Connection Settings
+        </a>
+        
+        <!-- Connection Settings Pane (hidden by default) -->
+        <div id="connection-settings-panel" class="connection-settings-panel hidden" style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px dashed var(--border-color);">
+          <h4 style="margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--color-text-primary);"><i class="fa-solid fa-server"></i> API Server Connection</h4>
+          <p style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 0.75rem;">Specify custom backend URL (e.g. http://192.168.1.15:5000) for local network access.</p>
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <div class="input-wrapper">
+              <i class="fa-solid fa-link input-icon"></i>
+              <input type="text" id="custom-api-url" placeholder="e.g. http://localhost:5000">
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-api" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Cancel</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-save-api" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Save & Reconnect</button>
+          </div>
+        </div>
         
       </div>
       

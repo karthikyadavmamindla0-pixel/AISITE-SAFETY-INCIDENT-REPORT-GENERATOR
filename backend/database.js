@@ -59,6 +59,13 @@ const defaultUsers = [
     password: 'password123',
     full_name: 'Admin Director',
     role: 'Safety Director'
+  },
+  {
+    id: 'usr-rakesh',
+    username: 'rakesh varma',
+    password: 'rakesh',
+    full_name: 'Rakesh Varma',
+    role: 'Site Supervisor'
   }
 ];
 

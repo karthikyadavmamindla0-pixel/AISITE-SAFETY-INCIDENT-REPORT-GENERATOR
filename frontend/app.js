@@ -2,7 +2,15 @@
    CROWNRIDGE LLP - CLIENT LOGIC (app.js)
    ========================================== */
 
-const API_BASE_URL = window.location.origin === 'null' ? '' : window.location.origin;
+// Retrieve saved API base URL or default to window.location.origin (falls back to localhost:5000 if file://)
+let API_BASE_URL = localStorage.getItem('api_base_url') || 
+  ((window.location.protocol === 'file:' || window.location.origin === 'null') 
+    ? 'http://localhost:5000' 
+    : window.location.origin);
+
+if (API_BASE_URL.endsWith('/')) {
+  API_BASE_URL = API_BASE_URL.slice(0, -1);
+}
 
 // App State
 let currentReportId = null;
@@ -314,6 +322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initFormTabs();
   initCharacterCounter();
   initStarRating();
+  initConnectionSettings();
   
   initAuthUI();
   await checkAuthStatus();
@@ -323,6 +332,90 @@ document.addEventListener('DOMContentLoaded', async () => {
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   document.getElementById('incident-timestamp').value = now.toISOString().slice(0, 16);
 });
+
+// ==========================================
+// API SERVER CONNECTION SETTINGS
+// ==========================================
+function initConnectionSettings() {
+  const linkConfigureApi = document.getElementById('link-configure-api');
+  const connectionSettingsPanel = document.getElementById('connection-settings-panel');
+  const customApiUrlInput = document.getElementById('custom-api-url');
+  const btnCancelApi = document.getElementById('btn-cancel-api');
+  const btnSaveApi = document.getElementById('btn-save-api');
+
+  const apiSettingsBtn = document.getElementById('api-settings-btn');
+  const apiSettingsModal = document.getElementById('api-settings-modal');
+  const modalApiUrlInput = document.getElementById('modal-api-url');
+  const btnCloseApiModal = document.getElementById('btn-close-api-modal');
+  const btnCancelApiModal = document.getElementById('btn-cancel-api-modal');
+  const btnSaveApiModal = document.getElementById('btn-save-api-modal');
+
+  // Set current base URL in forms
+  customApiUrlInput.value = API_BASE_URL;
+  modalApiUrlInput.value = API_BASE_URL;
+
+  // Toggle panel inside Login Overlay
+  linkConfigureApi.addEventListener('click', (e) => {
+    e.preventDefault();
+    connectionSettingsPanel.classList.toggle('hidden');
+    customApiUrlInput.value = API_BASE_URL;
+  });
+
+  btnCancelApi.addEventListener('click', () => {
+    connectionSettingsPanel.classList.add('hidden');
+  });
+
+  btnSaveApi.addEventListener('click', () => {
+    let url = customApiUrlInput.value.trim();
+    if (!url) {
+      showToast('Please enter a valid server URL.', true);
+      return;
+    }
+    if (url.endsWith('/')) {
+      url = url.slice(0, -1);
+    }
+    localStorage.setItem('api_base_url', url);
+    API_BASE_URL = url;
+    showToast(`API Server URL set to ${url}. Reconnecting...`);
+    connectionSettingsPanel.classList.add('hidden');
+    checkAuthStatus();
+  });
+
+  // Toggle Modal for authenticated users
+  apiSettingsBtn.addEventListener('click', () => {
+    modalApiUrlInput.value = API_BASE_URL;
+    apiSettingsModal.classList.remove('hidden');
+  });
+
+  const closeApiModal = () => {
+    apiSettingsModal.classList.add('hidden');
+  };
+
+  btnCloseApiModal.addEventListener('click', closeApiModal);
+  btnCancelApiModal.addEventListener('click', closeApiModal);
+  
+  apiSettingsModal.addEventListener('click', (e) => {
+    if (e.target === apiSettingsModal) {
+      closeApiModal();
+    }
+  });
+
+  btnSaveApiModal.addEventListener('click', () => {
+    let url = modalApiUrlInput.value.trim();
+    if (!url) {
+      showToast('Please enter a valid server URL.', true);
+      return;
+    }
+    if (url.endsWith('/')) {
+      url = url.slice(0, -1);
+    }
+    localStorage.setItem('api_base_url', url);
+    API_BASE_URL = url;
+    showToast(`API Server URL set to ${url}. Reconnecting...`);
+    closeApiModal();
+    checkAuthStatus();
+  });
+}
 
 // ==========================================
 // THEME & CUSTOM STYLE CONTROLS
@@ -550,6 +643,11 @@ async function generateSafetyReport(payload) {
   outputContent.classList.add('hidden');
   outputLoading.classList.remove('hidden');
 
+  // Auto-scroll to results output panel on mobile/tablet viewports
+  if (window.innerWidth <= 1024) {
+    outputLoading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   // Animate mock progress steps
   const steps = [
     { text: 'Initializing site supervisor variables...', progress: 15 },
@@ -630,6 +728,11 @@ function displayReport(report) {
   // Transition UI
   outputLoading.classList.add('hidden');
   outputContent.classList.remove('hidden');
+
+  // Auto-scroll to report sheet on mobile/tablet viewports
+  if (window.innerWidth <= 1024) {
+    outputContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   // Reset ratings widget
   resetRatingsWidget();
